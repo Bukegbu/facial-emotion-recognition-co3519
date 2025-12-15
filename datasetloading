@@ -1,0 +1,56 @@
+def load_images_from_folders(data_dir, image_size=(48, 48)):
+   
+    all_images = []
+    all_labels = []
+
+    # Check if the path exists
+    if not os.path.isdir(data_dir):
+        print(f"Error: Directory not found: {data_dir}. Skipping.")
+        return all_images, all_labels
+
+    # os.walk traverses the directory tree
+    for root, dirs, files in os.walk(data_dir):
+        # The label is derived from the subdirectory name
+        label = os.path.basename(root)
+
+        # Skip the root directory itself if it's the main path
+        if root == data_dir:
+            continue
+
+        for file_name in tqdm(files, desc=f"Loading {label} from {os.path.basename(data_dir)}"):
+            if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp')):
+                file_path = os.path.join(root, file_name)
+
+                # Load image in grayscale (flag 0)
+                image = cv2.imread(file_path, 0)
+
+                if image is not None:
+                    # Resize image to a consistent size
+                    image = cv2.resize(image, image_size)
+                    all_images.append(image)
+                    all_labels.append(label)
+
+    return all_images, all_labels
+
+def extract_lbp_features(X_raw, num_points=LBP_POINTS, radius=LBP_RADIUS, desc="Extracting LBP"):
+    X_features = []
+    eps = 1e-7 # Small value to prevent division by zero during normalization
+
+    for image in tqdm(X_raw, desc=desc):
+        # Compute the LBP map using the 'uniform' method for rotation invariance
+        lbp_map = local_binary_pattern(image, num_points, radius, method="uniform")
+
+        n_bins = int(lbp_map.max() + 1)
+
+        # Compute the histogram of the LBP map
+        hist, _ = np.histogram(lbp_map.ravel(),
+                               bins=np.arange(0, n_bins + 1),
+                               range=(0, n_bins))
+
+        # Normalize the histogram (LBP feature vector)
+        hist = hist.astype("float")
+        hist /= (hist.sum() + eps)
+
+        X_features.append(hist)
+
+    return np.array(X_features)
