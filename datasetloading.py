@@ -1,5 +1,4 @@
 def load_images_from_folders(data_dir, image_size=(48, 48)):
-   
     all_images = []
     all_labels = []
 
